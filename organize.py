@@ -35,3 +35,12 @@ else:
     folder_name = suffix[1:]  # remove the dot
 dest_dir = target / folder_name
 print(f"{item.name} -> {dest_dir / item.name}")
+
+# Create destination folder if needed and move
+dest_dir.mkdir(exist_ok=True)
+dest_path = dest_dir / item.name
+if dest_path.exists():
+    print(f"Warning: {dest_path} already exists. Skipping.")
+else:
+    item.rename(dest_path)
+    print(f"Moved: {item.name} -> {dest_path}")
