@@ -21,6 +21,7 @@ def main():
 if __name__ == "__main__":
     main()
 
+### Filter only files (no folders, no symlinks)
 for item in target.iterdir():
     if item.is_symlink() or not item.is_file():
         continue
