@@ -1,46 +1,34 @@
 #!/usr/bin/env python3
 """File organizer: sort files into subfolders by extension."""
 
+# argparse lets users pass arguments on the command line:
+#   python organize.py /some/folder
+# Without it the script would always work on a hardcoded path — not useful.
 import argparse
-from pathlib import Path
+
 
 def main():
-    parser = argparse.ArgumentParser(description="Organize files by extension")
-    parser.add_argument("directory", help="Directory to organize")
+    # 1. Create the parser and describe what this script does
+    parser = argparse.ArgumentParser(
+        description="Organize files by extension."
+    )
+
+    # 2. Register the one argument we need: the directory to organize
+    #    "directory" (no dashes) = positional argument → always required
+    parser.add_argument(
+        "directory",
+        help="Path to the directory you want to organize"
+    )
+
+    # 3. Parse whatever the user typed and store results in `args`
+    #    After this line:  args.directory == "/some/folder"
     args = parser.parse_args()
 
-    target = Path(args.directory)
-    if not target.is_dir():
-        print(f"Error: {target} is not a directory.")
-        return
+    # Temporary: just prove we received the argument correctly
+    print(f"Target directory: {args.directory}")
 
-    # List all items in the directory
-    for item in target.iterdir():
-        print(item.name)
 
+# This guard means main() only runs when you execute THIS file directly.
+# If another script imports organize.py, main() stays silent.
 if __name__ == "__main__":
     main()
-
-### Filter only files (no folders, no symlinks)
-for item in target.iterdir():
-    if item.is_symlink() or not item.is_file():
-        continue
-    print(item.name)
-
-### Extract extension and compute destination folder
-suffix = item.suffix.lower()
-if suffix == '':
-    folder_name = 'no_extension'
-else:
-    folder_name = suffix[1:]  # remove the dot
-dest_dir = target / folder_name
-print(f"{item.name} -> {dest_dir / item.name}")
-
-# Create destination folder if needed and move
-dest_dir.mkdir(exist_ok=True)
-dest_path = dest_dir / item.name
-if dest_path.exists():
-    print(f"Warning: {dest_path} already exists. Skipping.")
-else:
-    item.rename(dest_path)
-    print(f"Moved: {item.name} -> {dest_path}")
