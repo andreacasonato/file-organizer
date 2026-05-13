@@ -19,19 +19,6 @@ def main():
 
     print(f"Organizing: {target}\n")
 
-    # NEW: Collect every item in the directory, but keep only plain files.
-    #
-    # target.iterdir() yields every item (files, folders, symlinks) one by one.
-    # We build a list with a "list comprehension" — a compact Python loop:
-    #
-    #   [item for item in <iterable> if <condition>]
-    #
-    # The two conditions:
-    #   item.is_file()    → True for regular files only (excludes folders)
-    #   not item.is_symlink() → excludes symbolic links (shortcuts);
-    #                           moving a symlink instead of its target causes bugs
-    #
-    # sorted() makes the output predictable — alphabetical order every time.
     files = sorted([
         item for item in target.iterdir()
         if item.is_file() and not item.is_symlink()
@@ -42,7 +29,25 @@ def main():
         return
 
     for item in files:
-        print(item.name)
+        # NEW: Figure out where this file should go.
+        #
+        # item.suffix → the extension WITH the dot, e.g. ".py", ".PDF", ""
+        # .lower()    → normalize case so ".JPG" and ".jpg" land in the same folder
+        suffix = item.suffix.lower()
+
+        # If there's no extension (suffix == ""), use a catch-all folder name.
+        # Otherwise strip the leading dot: ".py" → "py", ".jpg" → "jpg"
+        if suffix == "":
+            folder_name = "no_extension"
+        else:
+            folder_name = suffix[1:]   # [1:] means "skip the first character"
+
+        # NEW: Build the full destination path.
+        # The / operator on Path objects joins paths — no string concatenation needed.
+        # e.g.  target / "jpg"  →  /home/user/downloads/jpg
+        dest_dir = target / folder_name
+
+        print(f"  {item.name:30s} → {dest_dir.name}/")
 
 
 if __name__ == "__main__":
