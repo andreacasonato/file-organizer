@@ -2,6 +2,11 @@
 """File organizer: sort files into subfolders by extension."""
 
 import argparse
+# NEW: shutil (shell utilities) is a standard library module for file operations.
+# We use shutil.move() instead of Path.rename() because rename() breaks when
+# source and destination are on different drives (e.g. SSD → USB stick).
+# shutil.move() handles both cases transparently.
+import shutil
 from pathlib import Path
 
 
@@ -29,25 +34,29 @@ def main():
         return
 
     for item in files:
-        # NEW: Figure out where this file should go.
-        #
-        # item.suffix → the extension WITH the dot, e.g. ".py", ".PDF", ""
-        # .lower()    → normalize case so ".JPG" and ".jpg" land in the same folder
         suffix = item.suffix.lower()
-
-        # If there's no extension (suffix == ""), use a catch-all folder name.
-        # Otherwise strip the leading dot: ".py" → "py", ".jpg" → "jpg"
-        if suffix == "":
-            folder_name = "no_extension"
-        else:
-            folder_name = suffix[1:]   # [1:] means "skip the first character"
-
-        # NEW: Build the full destination path.
-        # The / operator on Path objects joins paths — no string concatenation needed.
-        # e.g.  target / "jpg"  →  /home/user/downloads/jpg
+        folder_name = "no_extension" if suffix == "" else suffix[1:]
         dest_dir = target / folder_name
+        dest_path = dest_dir / item.name   # full path including filename
 
-        print(f"  {item.name:30s} → {dest_dir.name}/")
+        # NEW: Skip if a file with the same name already exists at the destination.
+        # This is a safety guard — we never silently overwrite existing files.
+        if dest_path.exists():
+            print(f"  [SKIP]  '{item.name}' already exists in '{folder_name}/'")
+            continue   # skip to the next file in the loop
+
+        # NEW: Create the destination folder if it doesn't exist yet.
+        # exist_ok=True means "don't raise an error if the folder already exists"
+        # parents=False (default) means we only create ONE level, not a whole tree.
+        dest_dir.mkdir(exist_ok=True)
+
+        # NEW: Move the file.
+        # str() is needed because shutil.move() expects strings, not Path objects
+        # in older Python versions. Harmless on modern Python, good habit.
+        shutil.move(str(item), dest_path)
+        print(f"  [MOVED] '{item.name}' → '{folder_name}/'")
+
+    print("\nDone.")
 
 
 if __name__ == "__main__":
