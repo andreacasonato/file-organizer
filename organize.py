@@ -2,10 +2,6 @@
 """File organizer: sort files into subfolders by extension."""
 
 import argparse
-# NEW: shutil (shell utilities) is a standard library module for file operations.
-# We use shutil.move() instead of Path.rename() because rename() breaks when
-# source and destination are on different drives (e.g. SSD → USB stick).
-# shutil.move() handles both cases transparently.
 import shutil
 from pathlib import Path
 
@@ -15,12 +11,27 @@ def main():
         description="Organize files by extension."
     )
     parser.add_argument("directory", help="Path to the directory you want to organize")
+
+    # NEW: add --dry-run as an optional flag.
+    # action="store_true" means: if the user types --dry-run, args.dry_run = True
+    #                            if they omit it,              args.dry_run = False
+    # Note: argparse converts the dash to an underscore → dry_run (not dry-run).
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview what would happen without moving any files"
+    )
+
     args = parser.parse_args()
+    dry_run: bool = args.dry_run   # store in a plain variable for clarity
 
     target = Path(args.directory).resolve()
     if not target.is_dir():
         print(f"Error: '{target}' is not a valid directory.")
         return
+
+    if dry_run:
+        print("=== DRY-RUN: no files will be moved ===\n")
 
     print(f"Organizing: {target}\n")
 
@@ -37,24 +48,22 @@ def main():
         suffix = item.suffix.lower()
         folder_name = "no_extension" if suffix == "" else suffix[1:]
         dest_dir = target / folder_name
-        dest_path = dest_dir / item.name   # full path including filename
+        dest_path = dest_dir / item.name
 
-        # NEW: Skip if a file with the same name already exists at the destination.
-        # This is a safety guard — we never silently overwrite existing files.
         if dest_path.exists():
-            print(f"  [SKIP]  '{item.name}' already exists in '{folder_name}/'")
-            continue   # skip to the next file in the loop
+            print(f"  [SKIP]     '{item.name}' already exists in '{folder_name}/'")
+            continue
 
-        # NEW: Create the destination folder if it doesn't exist yet.
-        # exist_ok=True means "don't raise an error if the folder already exists"
-        # parents=False (default) means we only create ONE level, not a whole tree.
-        dest_dir.mkdir(exist_ok=True)
-
-        # NEW: Move the file.
-        # str() is needed because shutil.move() expects strings, not Path objects
-        # in older Python versions. Harmless on modern Python, good habit.
-        shutil.move(str(item), dest_path)
-        print(f"  [MOVED] '{item.name}' → '{folder_name}/'")
+        # NEW: Branch on dry_run BEFORE touching the filesystem.
+        # In dry-run mode we only print — mkdir() and shutil.move() are never called.
+        # This makes testing safe: you can point the script at real folders
+        # and see exactly what it would do without risking any data.
+        if dry_run:
+            print(f"  [DRY-RUN]  Would move '{item.name}' → '{folder_name}/'")
+        else:
+            dest_dir.mkdir(exist_ok=True)
+            shutil.move(str(item), dest_path)
+            print(f"  [MOVED]    '{item.name}' → '{folder_name}/'")
 
     print("\nDone.")
 
