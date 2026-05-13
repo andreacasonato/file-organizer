@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""File organizer: sort files into subfolders by extension."""
+"""
+File organizer: scan a directory and sort files into subfolders by extension.
+
+Usage:
+    python organize.py <directory> [--dry-run] [--clean]
+
+Flags:
+    --dry-run   Preview moves without touching the filesystem
+    --clean     Remove empty subfolders after organizing
+"""
 
 import argparse
 import shutil
@@ -11,19 +20,20 @@ def main():
         description="Organize files by extension."
     )
     parser.add_argument("directory", help="Path to the directory you want to organize")
-
-    # NEW: add --dry-run as an optional flag.
-    # action="store_true" means: if the user types --dry-run, args.dry_run = True
-    #                            if they omit it,              args.dry_run = False
-    # Note: argparse converts the dash to an underscore → dry_run (not dry-run).
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Preview what would happen without moving any files"
     )
+    # NEW: --clean flag to remove empty subfolders after organizing.
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="Delete empty subfolders after organizing"
+    )
 
     args = parser.parse_args()
-    dry_run: bool = args.dry_run   # store in a plain variable for clarity
+    dry_run: bool = args.dry_run
 
     target = Path(args.directory).resolve()
     if not target.is_dir():
@@ -54,16 +64,36 @@ def main():
             print(f"  [SKIP]     '{item.name}' already exists in '{folder_name}/'")
             continue
 
-        # NEW: Branch on dry_run BEFORE touching the filesystem.
-        # In dry-run mode we only print — mkdir() and shutil.move() are never called.
-        # This makes testing safe: you can point the script at real folders
-        # and see exactly what it would do without risking any data.
         if dry_run:
             print(f"  [DRY-RUN]  Would move '{item.name}' → '{folder_name}/'")
         else:
             dest_dir.mkdir(exist_ok=True)
             shutil.move(str(item), dest_path)
             print(f"  [MOVED]    '{item.name}' → '{folder_name}/'")
+
+    # NEW: If the user passed --clean, scan for empty subfolders and remove them.
+    #
+    # When does this happen? Example:
+    #   Before running: downloads/jpg/photo.jpg   (jpg/ already existed)
+    #   We move all .jpg files there — jpg/ is not empty, so we leave it alone.
+    #   But if jpg/ was already empty before we started, --clean removes it.
+    #
+    # How it works:
+    #   any(folder.iterdir()) --> True if the folder contains at least one item
+    #   not any(...)          --> True only if the folder is completely empty
+    #   folder.rmdir()        --> deletes the folder (only works on empty folders,
+    #                           so this is safe — Python raises an error if not empty)
+    if args.clean:
+        print("\nCleaning empty folders…")
+        for folder in sorted(target.iterdir()):
+            if not folder.is_dir():
+                continue
+            if not any(folder.iterdir()):   # is the folder empty?
+                if dry_run:
+                    print(f"  [DRY-RUN]  Would remove empty folder: '{folder.name}/'")
+                else:
+                    folder.rmdir()
+                    print(f"  [REMOVED]  Empty folder: '{folder.name}/'")
 
     print("\nDone.")
 
