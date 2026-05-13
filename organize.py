@@ -26,3 +26,12 @@ for item in target.iterdir():
     if item.is_symlink() or not item.is_file():
         continue
     print(item.name)
+
+### Extract extension and compute destination folder
+suffix = item.suffix.lower()
+if suffix == '':
+    folder_name = 'no_extension'
+else:
+    folder_name = suffix[1:]  # remove the dot
+dest_dir = target / folder_name
+print(f"{item.name} -> {dest_dir / item.name}")
