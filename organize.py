@@ -1,34 +1,37 @@
 #!/usr/bin/env python3
 """File organizer: sort files into subfolders by extension."""
 
-# argparse lets users pass arguments on the command line:
-#   python organize.py /some/folder
-# Without it the script would always work on a hardcoded path — not useful.
 import argparse
+# NEW: pathlib.Path gives us an OS-independent way to work with filesystem paths.
+# It replaces messy string operations like os.path.join() with clean dot-notation.
+from pathlib import Path
 
 
 def main():
-    # 1. Create the parser and describe what this script does
     parser = argparse.ArgumentParser(
         description="Organize files by extension."
     )
-
-    # 2. Register the one argument we need: the directory to organize
-    #    "directory" (no dashes) = positional argument → always required
     parser.add_argument(
         "directory",
         help="Path to the directory you want to organize"
     )
-
-    # 3. Parse whatever the user typed and store results in `args`
-    #    After this line:  args.directory == "/some/folder"
     args = parser.parse_args()
 
-    # Temporary: just prove we received the argument correctly
-    print(f"Target directory: {args.directory}")
+    # NEW: Convert the raw string the user typed into a Path object.
+    # .resolve() turns relative paths ("../docs") into absolute ones ("/home/user/docs")
+    # so there's never any ambiguity about where we're working.
+    target = Path(args.directory).resolve()
+
+    # NEW: Validate before doing any work.
+    # .is_dir() returns True only if the path exists AND is a directory (not a file).
+    # Printing an error and returning early is called a "guard clause" —
+    # it keeps the rest of the function free of nested ifs.
+    if not target.is_dir():
+        print(f"Error: '{target}' is not a valid directory.")
+        return
+
+    print(f"Organizing: {target}")
 
 
-# This guard means main() only runs when you execute THIS file directly.
-# If another script imports organize.py, main() stays silent.
 if __name__ == "__main__":
     main()
