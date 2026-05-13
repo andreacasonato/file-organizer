@@ -20,3 +20,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+for item in target.iterdir():
+    if item.is_symlink() or not item.is_file():
+        continue
+    print(item.name)
